@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuestMaster - Gioco Interattivo PDDL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icone Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; 
+            color: #c9d1d9;
+        }
+        .text-neon-blue { color: #4ee4ff; }
+        .bg-gradient-quest {
+            background: linear-gradient(145deg, #1f2a37 0%, #0d1117 100%);
+        }
+        .btn-action {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(78, 228, 255, 0.5);
+        }
+        .pddl-tag {
+            background-color: #2a613f;
+            color: #d1f7d1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 4px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #4ee4ff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .disabled-action {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="quest-container" class="w-full max-w-7xl rounded-xl bg-gradient-quest border border-[#1f2a37] p-6 shadow-2xl">
+        <h1 class="text-3xl font-extrabold text-center mb-6 text-neon-blue tracking-wider">
+            QuestMaster: Gioco Interattivo PDDL
+        </h1>
+        
+        <div id="pddl-loader" class="bg-[#151c24] p-8 rounded-xl border border-gray-700 shadow-lg text-center flex flex-col items-center justify-center">
+    <h2 class="text-2xl font-semibold mb-4 text-gray-200">Carica i File PDDL</h2>
+    <p class="text-gray-400 mb-8 max-w-lg">
+        Carica i file <code>domain.pddl</code> e <code>problem.pddl</code> generati nella Fase 1 per iniziare l'avventura.
+    </p>
+    
+    <div class="flex flex-col md:flex-row gap-8 mb-8 justify-center items-center w-full max-w-3xl">
+        <div class="flex flex-col items-center w-full md:w-1/2">
+            <label for="domainFile" class="mb-3 text-gray-300 font-medium text-lg">Domain File (.pddl)</label>
+            <input type="file" id="domainFile" accept=".pddl"
+                   class="text-sm text-gray-400 w-80
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-violet-50 file:text-neon-blue
+                          hover:file:bg-violet-100"/>
+        </div>
+
+        <div class="flex flex-col items-center w-full md:w-1/2">
+            <label for="problemFile" class="mb-3 text-gray-300 font-medium text-lg">Problem File (.pddl)</label>
+            <input type="file" id="problemFile" accept=".pddl"
+                   class="text-sm text-gray-400 w-80
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-violet-50 file:text-neon-blue
+                          hover:file:bg-violet-100"/>
+        </div>
+    </div>
+    
+    <button id="startButton" onclick="loadPDDLFiles()" 
+            class="btn-action w-full md:w-1/3 p-3 bg-red-500 text-gray-900 font-bold rounded-lg hover:bg-opacity-80 transition">
+        <i data-lucide="play" class="w-5 h-5 inline mr-2"></i> Avvia la Quest
+    </button>
+
+    <p id="pddl-status" class="mt-4 text-sm text-red-400 hidden">
+        Seleziona entrambi i file per iniziare.
+    </p>
+</div>
+
+
+        <div id="game-area" class="flex flex-col lg:flex-row gap-6 hidden">
+
+            <div class="lg:w-2/3 flex flex-col gap-4">
+                <div class="relative rounded-lg overflow-hidden border border-gray-700 shadow-xl">
+                    <div id="image-placeholder" class="bg-gray-800 aspect-[16/9] flex items-center justify-center text-gray-500">
+                        <div id="loading-indicator" class="hidden flex flex-col items-center">
+                            <div class="spinner mb-2"></div>
+                            Generazione scena...
+                        </div>
+                        <img id="scene-image" class="w-full h-full object-contain hidden" alt="Scena narrativa dell'avventura" src="https://placehold.co/800x400/1f2a37/6b7280?text=Scenario+in+caricamento...">
+                    </div>
+                </div>
+
+                <div class="bg-[#151c24] p-4 rounded-lg border border-gray-700 shadow-inner min-h-[150px]">
+                    <h2 class="text-xl font-bold mb-3 text-neon-blue border-b border-gray-700 pb-2">Narrativa</h2>
+                    <p id="story-text" class="text-gray-300 leading-relaxed">Inizia l'avventura...</p>
+                    <div id="win-message" class="hidden mt-4 p-4 rounded-lg bg-green-900 border border-green-700 text-green-300 font-semibold">
+                         <i data-lucide="trophy" class="w-5 h-5 inline mr-2"></i> Vittoria! Hai completato l'avventura!
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:w-1/3 flex flex-col gap-4">
+                
+                <div class="bg-[#151c24] p-4 rounded-lg border border-gray-700 shadow-inner">
+                    <h2 class="text-xl font-bold mb-3 text-neon-blue border-b border-gray-700 pb-2">Stato PDDL</h2>
+                    <div id="pddl-state" class="text-sm text-gray-400">
+                    </div>
+                </div>
+
+                <!-- Actions (PDDL Actions) -->
+                <div class="bg-[#151c24] p-4 rounded-lg border border-gray-700 shadow-inner flex-grow">
+                    <h2 class="text-xl font-bold mb-3 text-neon-blue border-b border-gray-700 pb-2">Azioni Disponibili</h2>
+                    <div id="action-buttons" class="flex flex-col space-y-3">
+                        <p id="loading-actions" class="text-gray-500 hidden">Caricamento azioni...</p>
+                    </div>
+                    <button id="restart-button" onclick="initGame()" class="btn-action w-full mt-4 p-3 bg-red-700 text-white rounded-lg hover:bg-red-600 transition hidden">
+                         <i data-lucide="rotate-ccw" class="w-5 h-5 inline mr-2"></i> Riavvia Partita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        //const apiKey = "AIzaSyDG_WkacLuCib9ZOGH6vWneZGFQpg7qQBA";
+
+        //const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+        const GEMINI_API_URL = "http://localhost:5500/api/gemini";
+
+        const IMAGEN_API_URL = "http://localhost:5500/api/imagen";
+        let gameState;
+        let lastAction = null;
+        let gameHistory = [];
+        let PDDL_DOMAIN = {};
+        let INITIAL_STATE = [];
+ 
+
+        function tokenize(code) {
+            code = code.replace(/;[^\n]*/g, '');
+            code = code.replace(/\/\*[\s\S]*?\*\//g, '');
+            
+            return code.replace(/\(/g, ' ( ')
+                       .replace(/\)/g, ' ) ')
+                       .split(/\s+/)
+                       .filter(t => t); // VSIL rimozione spazi
+        }
+
+
+        function readFromTokens(tokens) {
+            if (tokens.length === 0) throw new Error("Errore di sintassi PDDL: lista di token inattesa (Fine del file prematura).");
+            
+            const token = tokens.shift();
+            if (token === '(') {
+                let L = [];
+                while (tokens[0] !== ')') {
+                    if (tokens.length === 0) throw new Error("Errore di sintassi PDDL: ')' mancante alla fine di una lista.");
+                    L.push(readFromTokens(tokens));
+                }
+                tokens.shift(); 
+                return L;
+            } else if (token === ')') {
+                throw new Error("Errore di sintassi PDDL: ')' inattesa.");
+            } else {
+                return token.toLowerCase();
+            }
+        }
+        
+
+        function arrayToPredicate(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return null;
+            if (arr[0] === 'not' && Array.isArray(arr[1])) {
+                 return `(not ${arrayToPredicate(arr[1])})`;
+            }
+            return `(${arr.join(' ')})`;
+        }
+
+        function parsePDDL(fileText) {
+            const tokens = tokenize(fileText);
+            const tree = readFromTokens(tokens);             
+            const result = { actions: [], objects: {}, goal: [], init: [], predicates: {} };
+            const mainContent = tree.slice(2);
+            if (!mainContent || !Array.isArray(mainContent)) return result;
+
+            let currentAction = null;
+            for (let i = 0; i < mainContent.length; i++) {
+                const item = mainContent[i];
+                if (Array.isArray(item)) {
+                    const tag = item[0];
+                    switch (tag) {
+                        case ':predicates':
+                            item.slice(1).forEach(pred => {
+                                if (Array.isArray(pred)) {
+                                    result.predicates[pred[0]] = pred.slice(1);
+                                }
+                            });
+                            break;
+
+                        case ':action':
+                            currentAction = { name: item[1], params: [], preconditions: [], effects: [], label: (p) => item[1].replace(/_/g, ' ') };                            
+                            for (let j = 2; j < item.length; j++) {
+                                const prop = item[j];
+                                if (prop === ':parameters' && Array.isArray(item[j+1])) {
+                                    let paramContent = item[j+1];                                    
+                                    if (paramContent.length > 0 && Array.isArray(paramContent[0])) {
+                                        paramContent = paramContent.flat();
+                                    }
+
+                                    for (let k = 0; k < paramContent.length; k++) {
+                                        const token = paramContent[k];
+                                        if (token.startsWith('?')) {
+                                            let paramString = token;
+                                            if (k + 1 < paramContent.length && paramContent[k+1] === '-') {
+                                                if (k + 2 < paramContent.length) {
+                                                    paramString += ` - ${paramContent[k+2]}`;
+                                                    k += 2; 
+                                                }
+                                            }
+                                            currentAction.params.push(paramString);
+                                        }
+                                    }
+                                    j++;
+                                } 
+                                else if (prop === ':precondition' && Array.isArray(item[j+1])) {
+                                    const content = item[j+1];
+                                    currentAction.preconditions = content[0] === 'and' ? 
+                                        content.slice(1).map(arrayToPredicate) : 
+                                        [arrayToPredicate(content)];
+                                    j++;
+                                } else if (prop === ':effect' && Array.isArray(item[j+1])) {
+                                    const content = item[j+1];
+                                    currentAction.effects = content[0] === 'and' ? 
+                                        content.slice(1).map(arrayToPredicate) : 
+                                        [arrayToPredicate(content)];
+                                    j++;
+                                }
+                            }
+                            result.actions.push(currentAction);
+                            currentAction = null;
+                            break;
+                            
+                        case ':objects':
+                            const typeMap = {};
+                            for (let j = 1; j < item.length; j += 3) {
+                                if (item[j+1] === '-') {
+                                    typeMap[item[j]] = item[j+2];
+                                } else {
+                                    typeMap[item[j]] = 'object'; 
+                                }
+                            }
+                            result.objects = typeMap;
+                            break;
+
+                        case ':init':
+                            result.init = item.slice(1)
+                                .filter(p => Array.isArray(p)) 
+                                .map(arrayToPredicate);
+                            break;
+
+                        case ':goal':
+                            const goalContent = item[1];
+                            if (Array.isArray(goalContent)) {
+                                if (goalContent[0] === 'and') {
+                                    result.goal = goalContent.slice(1)
+                                        .filter(p => Array.isArray(p))
+                                        .map(arrayToPredicate);
+                                } else {
+                                    result.goal = [arrayToPredicate(goalContent)];
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+            
+            return result;
+        }
+
+        async function loadPDDLFiles() {
+            const domainFile = document.getElementById('domainFile').files[0];
+            const problemFile = document.getElementById('problemFile').files[0];
+            const statusElement = document.getElementById('pddl-status');
+            const startButton = document.getElementById('startButton');
+
+            statusElement.classList.add('hidden');
+            startButton.disabled = true;
+
+            if (!domainFile || !problemFile) {
+                statusElement.textContent = "Seleziona sia il file Domain che il file Problem.";
+                statusElement.classList.remove('hidden');
+                startButton.disabled = false;
+                return;
+            }
+
+            try {
+                const domainText = await domainFile.text();
+                const problemText = await problemFile.text();
+                const domainData = parsePDDL(domainText);
+                const problemData = parsePDDL(problemText);
+                
+                if (!domainData.actions.length) {
+                    throw new Error("Il file DOMAIN non contiene azioni valide.");
+                }
+                if (!problemData.init.length || !problemData.goal.length) {
+                     throw new Error("Il file PROBLEM non contiene init o goal validi.");
+                }
+                PDDL_DOMAIN = {
+                    actions: domainData.actions,
+                    goal: problemData.goal,
+                    objects: problemData.objects
+                };
+                INITIAL_STATE = problemData.init;
+
+                document.getElementById('pddl-loader').classList.add('hidden');
+                document.getElementById('game-area').classList.remove('hidden');
+                initGame();
+
+            } catch (e) {
+                console.error("Errore nel caricamento o nell'analisi del PDDL:", e);
+                statusElement.textContent = `Errore di caricamento/parsing: ${e.message}. Riprova.`;
+                statusElement.classList.remove('hidden');
+                startButton.disabled = false;
+            }
+        }
+
+        function arrayToStateSet(predicates) {
+            return new Set(predicates.map(p => p.trim()));
+        }
+
+        function getAgentName() {
+            const agentObj = Object.entries(PDDL_DOMAIN.objects).find(([name, type]) => 
+                ['agent', 'person'].includes(type.toLowerCase())
+            );
+            if (agentObj) return agentObj[0];
+            return Object.keys(PDDL_DOMAIN.objects)[0] || 'protagonist';
+        }
+
+        function getPDDLStateString(currentState) {
+            const currentPredicates = Array.from(currentState).sort().join('\n  ');
+            const goalPredicates = PDDL_DOMAIN.goal.join('\n  ');
+            
+            return `
+                Current State (Facts):
+                ${currentPredicates}
+
+                Goal:
+                ${goalPredicates}
+
+                Objects and Types:
+                ${Object.entries(PDDL_DOMAIN.objects).map(([obj, type]) => `${obj} - ${type}`).join('\n  ')}
+                `;
+        }
+ 
+        async function generateNarrativeAndRender(currentState, actionDescription) {
+/*
+            if (!apiKey) {
+                renderActions();
+                //console.log("entrato api")
+                const storyText = document.getElementById('story-text');
+                if (storyText) storyText.innerHTML = `API Key non trovata. Continuazione solo logica: Azione completata: ${actionDescription}.`;
+                    return;
+            }
+*/
+            const pddlState = getPDDLStateString(currentState);
+            const actionContainer = document.getElementById('action-buttons');
+            const storyText = document.getElementById('story-text');
+            const loadingActions = document.getElementById('loading-actions');
+
+            if (actionContainer) {
+                actionContainer.querySelectorAll('button').forEach(btn => btn.classList.add('disabled-action'));
+            }
+            if (loadingActions) loadingActions.classList.remove('hidden');
+            if (storyText) storyText.textContent = "Analisi della situazione e caricamento narrativa (LLM in azione)...";
+
+            const agentName = getAgentName();
+
+            const userPrompt = `
+            Sei un agente narrativo QuestMaster. Il tuo compito è trasformare i cambiamenti di stato PDDL in una storia coinvolgente ed emozionante in italiano.
+            Il protagonista è l'oggetto denominato '${agentName}' nel PDDL.
+
+            Genera due elementi in base al seguente stato PDDL:
+            1. NARRATIVA: Un testo dettagliato, emozionante e descrittivo (3-4 frasi, massimo 100 parole) che descrive la scena attuale, l'umore del protagonista e le conseguenze dell'ultima azione: "${actionDescription}".
+            2. VISUAL_PROMPT: Un breve prompt descrittivo (massimo 15 parole) adatto a un generatore di immagini, incentrato sul protagonista e sullo scenario attuale.
+
+            Restituisci un singolo oggetto JSON:
+            {
+            "narrative": "<Testo narrativo generato>",
+            "visual_prompt": "<Prompt visivo generato>"
+            }
+            
+            Stato e oggetti PDDL:
+            ${pddlState}
+            `;
+
+            try {
+                let response = null;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    response = await fetch(GEMINI_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: userPrompt }] }],
+                            generationConfig: {
+                                temperature: 0.8,
+                                responseMimeType: "application/json"
+                            }
+                        })
+                    });
+                    if (response.ok) break;
+                    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error(`API Gemini error: ${response ? response.status : 'Fetch failed'}`);
+                }
+                
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const narrativeData = JSON.parse(jsonText);
+
+                storyText.innerHTML = narrativeData.narrative;
+                gameHistory.push({
+                    description: narrativeData.narrative,
+                    choices: lastAction ? lastAction.params : {}
+                });
+                generateImage(narrativeData.visual_prompt);
+
+            } catch (error) {
+                console.error("Errore durante la generazione della narrativa LLM:", error);
+                storyText.innerHTML = ` **ERRORE NARRATIVO:** Impossibile caricare la narrativa. La missione continua ma senza dettagli emotivi. Ultima Azione: ${actionDescription}`;
+                generateImage(`immagine di errore`);
+
+            } finally {
+        if (loadingActions) loadingActions.classList.add('hidden');
+        if (actionContainer) {
+            actionContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('disabled-action'));
+        }
+    }
+        }
+
+        let isImageGenerating = false; // flag per evitare chiamate multiple
+
+        async function generateImage(prompt) {
+            if (isImageGenerating) {
+                console.log("Ignorata richiesta immagine: generazione già in corso.");
+                return;
+            }
+            isImageGenerating = true;
+
+            const imagePlaceholder = document.getElementById('image-placeholder');
+            const sceneImage = document.getElementById('scene-image');
+            const loadingIndicator = document.getElementById('loading-indicator');
+
+            sceneImage.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            imagePlaceholder.style.backgroundColor = '#1f2a37'; 
+
+            const fullPrompt = `Cinematic illustration of the protagonist in the current scenario. Focus: ${prompt}. Style: Moody, realistic, dramatic lighting. Avoid text.`;
+            try {
+                const response = await fetch(IMAGEN_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: fullPrompt })
+                });
+                if (!response.ok) throw new Error(`API Imagen error: ${response.statusText}`);
+
+                const result = await response.json();
+                const base64Data = result.imageBase64 || result?.predictions?.[0]?.bytesBase64Encoded;
+
+                if (base64Data) {
+                    sceneImage.src = `data:image/png;base64,${base64Data}`;
+                } else {
+                    sceneImage.src = 'https://placehold.co/800x400/cc9966/000000?text=Immagine+non+disponibile';
+                }
+
+                sceneImage.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Errore durante la generazione dell'immagine:", error);
+                sceneImage.src = 'https://placehold.co/800x400/cc9966/000000?text=Errore+immagine';
+                sceneImage.classList.remove('hidden');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                isImageGenerating = false;
+            }
+        }
+
+        function initGame() {
+            if (!PDDL_DOMAIN.actions || !PDDL_DOMAIN.goal) {
+                document.getElementById('pddl-status').textContent = "Errore: Dati PDDL non caricati correttamente.";
+                document.getElementById('pddl-status').classList.remove('hidden');
+                document.getElementById('pddl-loader').classList.remove('hidden');
+                document.getElementById('game-area').classList.add('hidden');
+                return;
+            }
+            gameHistory = [];
+            gameState = arrayToStateSet(INITIAL_STATE);
+            lastAction = { name: 'start_game' };
+            document.getElementById('win-message').classList.add('hidden');
+            document.getElementById('restart-button').classList.add('hidden');
+            document.getElementById('scene-image').src = "https://placehold.co/800x400/1f2a37/6b7280?text=Scenario+in+caricamento...";
+            
+            gameHistory.push({
+                description: "Inizio del gioco: La tua missione inizia.",
+                choices: []
+            });
+            generateNarrativeAndRender(gameState, "Inizio del gioco: La tua missione inizia.");
+            
+            renderState();
+            renderActions();
+            //console.log("entrato initgame")
+        }
+
+        function executeAction(actionName, params = {}) {
+            //console.log(`DEBUG — Executing action: ${actionName}`, params);
+            // Normalize incoming params keys (strip leading '?')
+            const normParams = {};
+            Object.keys(params || {}).forEach(k => {
+                const nk = k.startsWith('?') ? k.slice(1) : k;
+                normParams[nk] = params[k];
+            });
+
+            //console.log("State before execution:", Array.from(gameState));
+            const actionDef = PDDL_DOMAIN.actions.find(a => a.name.replace(/[-_]/g, '') === actionName.replace(/[-_]/g, ''));
+            if (!actionDef) {
+                console.warn("Action definition not found!", actionName);
+                return;
+            }
+
+            debugBeforeAction(actionDef);
+            applyEffects(actionDef.effects, gameState, normParams);
+
+            debugAfterAction(actionDef, actionDef.effects);
+            renderState();
+            renderActions();
+
+            const paramValues = Object.entries(normParams).map(([k, v]) => `${k}:${v}`).join(', ');
+            lastAction = { name: actionName, params: normParams, description: `${actionName.replace(/_/g, ' ')} (${paramValues})` };
+            gameHistory.push({
+                description: `Azione eseguita: ${lastAction.description}`,
+                choices: lastAction.params
+            });
+            const isGoalMet = PDDL_DOMAIN.goal.every(g => gameState.has(g));
+            console.log("Is goal met?", isGoalMet);
+            if (isGoalMet) handleWin();
+
+            generateNarrativeAndRender(gameState, lastAction.description);
+        }
+
+        function applyEffects(effects, currentState, params = {}) {
+            //console.log("DEBUG — Applying effects (raw):", effects, "with params:", params);
+            const normParams = {};
+            Object.keys(params || {}).forEach(k => {
+                const key = k.startsWith('?') ? k.slice(1) : k;
+                normParams[key] = params[k];
+            });
+
+            function escapeRegex(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            const toAdd = [];
+            const toRemove = [];
+
+            effects.forEach(effect => {
+                let grounded = String(effect);
+                Object.keys(normParams).forEach(p => {
+                const regex = new RegExp('\\?' + escapeRegex(p) + '\\b', 'g');
+                grounded = grounded.replace(regex, normParams[p]);
+                });
+
+                grounded = grounded.replace(/\s+/g, ' ').trim();
+                if (!grounded.startsWith('(')) grounded = '(' + grounded + ')';
+                grounded = grounded.replace(/\( /g, '(').replace(/ \)/g, ')');
+
+                if (/^\(not\b/i.test(grounded)) {
+                let inner = grounded.replace(/^\(not\s*/i, '').replace(/\)$/, '').trim();
+                if (!inner.startsWith('(')) inner = '(' + inner + ')';
+                toRemove.push(inner);
+                } else {
+                toAdd.push(grounded);
+                }
+            });
+
+            toRemove.forEach(rem => {
+                if (currentState.has(rem)) currentState.delete(rem);
+                const predName = rem.match(/^\(([^ )]+)/)?.[1];
+                if (predName) {
+                for (const s of [...currentState]) {
+                    if (s.startsWith('(' + predName + ' ')) currentState.delete(s);
+                }
+                }
+            });
+
+            toAdd.forEach(add => {
+                if (currentState.has(add)) return;
+
+                const predName = add.match(/^\(([^ )]+)/)?.[1];
+                if (predName) {
+                for (const s of [...currentState]) {
+                    if (s.startsWith('(' + predName + ' ')) currentState.delete(s);
+                }
+                }
+                currentState.add(add);
+            });
+
+            //console.log("DEBUG — State after applying effects:", Array.from(currentState));
+        }
+
+        function handleWin() {
+            const winMessage = document.getElementById('win-message');
+            winMessage.classList.remove('hidden');
+
+            const actionContainer = document.getElementById('action-buttons');
+            actionContainer.innerHTML = '';
+
+            const restartButton = document.getElementById('restart-button');
+            restartButton.classList.remove('hidden');
+
+            let downloadBtn = document.getElementById('download-json-btn');
+            if (!downloadBtn) {
+                downloadBtn = document.createElement('button');
+                downloadBtn.id = 'download-json-btn';
+                downloadBtn.textContent = "📥 Scarica storia (JSON)";
+                downloadBtn.className = "btn-action w-full mt-3 p-3 bg-green-700 text-white rounded-lg hover:bg-green-600 transition";
+                downloadBtn.onclick = downloadGameHistory;
+                restartButton.parentNode.insertBefore(downloadBtn, restartButton.nextSibling);
+            }
+
+            const goalDescriptions = Array.from(PDDL_DOMAIN.goal).map(g =>
+                g.replace(/[()]/g, '').replace(/-/g, ' ')
+            );
+            const message = `Missione completata! Obiettivi raggiunti: ${goalDescriptions.join(', ')}.`;
+            document.getElementById('story-text').innerHTML += `<br><br>${message}`;
+
+            gameHistory.push({
+                description: "Missione completata con successo!",
+                choices: {}
+            });
+
+            generateImage(`Cinematic victory scene: the protagonist celebrates success. ${goalDescriptions.join(', ')}`);
+        }
+
+        function renderState() {
+            const stateDisplay = document.getElementById('pddl-state');
+            stateDisplay.innerHTML = Array.from(gameState).map(p => {
+                let displayP = p;
+                let colorClass = 'pddl-tag';
+                let displayLabel = ''; 
+
+                if (p.startsWith('(not')) {
+                    displayP = p.slice(5, -2).trim(); 
+                    colorClass = 'pddl-tag bg-red-700';
+                    displayLabel = `NOT (${displayP})`;
+                } else {
+                    displayP = p.slice(1, -1).trim();
+                    colorClass = 'pddl-tag bg-green-600';
+                    displayLabel = `(${displayP})`;
+                }
+
+                displayLabel = displayLabel.replace(/,/g, '');
+
+                return `<span class="${colorClass}">${displayLabel}</span>`;
+            }).join(' ');
+            lucide.createIcons();
+        }
+
+        async function renderActions() {
+            console.group("🔮 LLM — Generazione dinamica azioni");
+            const actionContainer = document.getElementById('action-buttons');
+            const loadingActions = document.getElementById('loading-actions');
+            actionContainer.innerHTML = '';
+            if (loadingActions) loadingActions.classList.remove('hidden');
+
+            const pddlState = getPDDLStateString(gameState);
+            const agentName = getAgentName();
+
+            // Prompt per il modello
+            const userPrompt = `
+            Sei QuestMaster, un planner narrativo.
+            Ricevi lo stato corrente PDDL, gli oggetti e le azioni del dominio.
+            Il tuo compito è scegliere le azioni più logiche e coerenti che il giocatore può compiere ORA.
+
+            ### Dati:
+            ${pddlState}
+
+            ### Azioni disponibili:
+            ${JSON.stringify(PDDL_DOMAIN.actions.map(a => ({
+                name: a.name,
+                params: a.params,
+                preconditions: a.preconditions,
+                effects: a.effects
+            })), null, 2)}
+
+            ### Oggetti:
+            ${JSON.stringify(PDDL_DOMAIN.objects, null, 2)}
+
+            ### Istruzioni:
+            1. Analizza lo stato e determina le azioni pertinenti e sensate (non inserire duplicati).
+            2. Restituisci un JSON **valido** nel formato:
+            {
+            "actions": [
+                {"label": "Apri la porta", "action": "open_door", "params": {"p": "porta1"}},
+                {"label": "Parla con la sentinella", "action": "talk_to", "params": {"p": "sentinella"}}
+            ]
+            }
+            3. Non inventare azioni che non esistono nel dominio, ma puoi adattare i nomi per renderli leggibili.
+            4. Usa i parametri coerenti con gli oggetti presenti.
+            5. Genera in lingua italiana
+            `;
+
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userPrompt }] }],
+                        generationConfig: { temperature: 0.7, responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API Gemini error: ${response.statusText}`);
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+
+        const llmData = JSON.parse(jsonText);
+        //console.log("🔹 LLM actions (raw):", llmData);
+
+        function stableStringifyParams(o) {
+            if (!o) return '{}';
+            const keys = Object.keys(o).sort();
+            const obj = {};
+            keys.forEach(k => obj[k] = o[k]);
+            return JSON.stringify(obj);
+        }
+
+        const uniqueActions = [];
+        const seen = new Set();
+
+        if (Array.isArray(llmData.actions)) {
+        llmData.actions.forEach(a => {
+            const params = a.params || {};
+            const normParams = {};
+            Object.keys(params).forEach(k => {
+            const nk = k.startsWith('?') ? k.slice(1) : k;
+            normParams[nk] = params[k];
+            });
+            const key = String(a.action) + '|' + stableStringifyParams(normParams);
+            if (!seen.has(key)) {
+            seen.add(key);
+            uniqueActions.push({ label: a.label || a.action, action: a.action, params: normParams });
+            }
+        });
+        }
+
+        if (uniqueActions.length > 0) {
+            uniqueActions.forEach(a => {
+                const button = document.createElement('button');
+                button.className = 'btn-action p-3 rounded-lg font-semibold bg-gray-600 hover:bg-neon-blue hover:text-gray-900';
+                button.textContent = a.label || a.action;
+                button.onclick = () => executeAction(a.action, a.params || {});
+                actionContainer.appendChild(button);
+            });
+        } else {
+            actionContainer.innerHTML = '<p class="text-gray-500">Nessuna azione proposta dal modello.</p>';
+        }
+            } catch (error) {
+                console.error("Errore LLM azioni dinamiche:", error);
+                actionContainer.innerHTML = '<p class="text-red-400">Errore nella generazione delle azioni.</p>';
+            } finally {
+                if (loadingActions) loadingActions.classList.add('hidden');
+                lucide.createIcons();
+                console.groupEnd();
+            }
+        }
+
+
+        function debugBeforeAction(action) {
+            console.log("🔹 DEBUG - Prima azione:", action.name);
+
+            const stateArr = Array.from(gameState);
+            console.log("DEBUG - stato corrente:", stateArr);
+
+            const pos = stateArr.filter(s => s.startsWith("(personaggio-in"));
+            console.log("DEBUG - posizione personaggio:", pos);
+
+        const preconditions = getGroundedPreconditions(action, {}); 
+            console.log("DEBUG - precondizioni:", preconditions);
+
+            const satisfied = preconditions.map(p => ({
+                precondition: p,
+                soddisfatta: stateArr.includes(p)
+            }));
+            console.log("DEBUG - precondizioni soddisfatte:", satisfied);
+        }
+
+        function debugAfterAction(action, effects) {
+            console.log("🔹 DEBUG - Dopo azione:", action.name);
+
+            console.log("DEBUG - effetti applicati:", effects);
+
+            const stateArr = Array.from(gameState);
+            console.log("DEBUG - stato aggiornato:", stateArr);
+
+            const pos = stateArr.filter(s => s.startsWith("(personaggio-in"));
+            console.log("DEBUG - posizione personaggio:", pos);
+
+            const executableActions = PDDL_DOMAIN.actions.map(act => {
+                const preconditions = getGroundedPreconditions(act);
+                const allSatisfied = preconditions.every(p => stateArr.includes(p));
+                return { name: act.name, eseguibile: allSatisfied };
+            });
+            console.log("DEBUG - azioni eseguibili dopo questa:", executableActions);
+        }
+
+        function getGroundedPreconditions(action, params = {}) {
+            return action.preconditions.map(pre => {
+                let grounded = pre;
+                Object.keys(params).forEach(p => {
+                    const regex = new RegExp('\\?' + p + '\\b', 'g');
+                    grounded = grounded.replace(regex, params[p]);
+                });
+                return grounded;
+            });
+        }
+
+        function downloadGameHistory() {
+            const jsonData = JSON.stringify(gameHistory, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `quest_history_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            link.click();
+
+            URL.revokeObjectURL(url);
+        }
+
+        window.onload = function() {
+            document.getElementById('startButton').disabled = false;
+        }
+    </script>
+</body>
+</html>
