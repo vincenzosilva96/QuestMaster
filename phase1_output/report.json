@@ -1,0 +1,13 @@
+{
+  "lore": "avventura ambientata nel futuro, sara walker deve combattere contro gli alieni e le macchine. \nPer salvare il mondo deve riuscire a tornare indietro nel passato con la macchina del tempo.",
+  "branching": {
+    "min": "3",
+    "max": "4"
+  },
+  "depth": {
+    "min": "3",
+    "max": "4"
+  },
+  "valid": true,
+  "validation_message": "Piano valido trovato"
+}
