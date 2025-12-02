@@ -1,0 +1,52 @@
+# ==============================
+# Quest Master - Git Ignore File
+# ==============================
+
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+venv/
+.env/
+
+# --- Environment and config ---
+.env
+.env.local
+.env.*.local
+
+# --- Logs and temporary files ---
+*.log
+logs/
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Build and output directories ---
+builds/
+dist/
+phase1_output/
+refinement_logs/
+fast-downward-*/output/
+*.plan
+sas_plan
+
+# --- IDE and editor folders ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- OS generated files ---
+ehthumbs.db
+desktop.ini
