@@ -1,0 +1,7 @@
+Quest Description: 
+avventura ambientata nel futuro, sara walker deve combattere contro gli alieni e le macchine. 
+Per salvare il mondo deve riuscire a tornare indietro nel passato con la macchina del tempo.
+
+Branching Factor: 3-4
+Depth Constraints: 3-4
+
