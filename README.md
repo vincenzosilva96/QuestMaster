@@ -13,10 +13,19 @@ It consists of three main components:
 -The result is an interactive story engine capable of producing adaptive adventures with logical consistency between narrative events and the underlying planning structure.
 
 <p align="center">
-
-  <em>AI Advisor</em>
+  <img width="1442" height="548" alt="Screenshot 2025-11-07 134223" src="https://github.com/user-attachments/assets/b1c1e02a-18f3-4c1d-8afd-846237053fd1" />
+  <em>Upload</em>
 </p>
 
+<p align="center">
+  <img width="1175" height="756" alt="Screenshot 2025-11-07 175421" src="https://github.com/user-attachments/assets/418d8a73-21dc-4f6f-9cfa-958214152431" />
+  <em>Generate Story</em>
+</p>
+
+<p align="center">
+  <img width="1143" height="317" alt="Screenshot 2025-11-07 192546" src="https://github.com/user-attachments/assets/484d6f81-cb3a-47e1-be7d-b1c33167a3eb" />
+  <em>End</em>
+</p>
 
 
 How to configure
