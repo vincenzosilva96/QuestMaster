@@ -12,7 +12,10 @@ It consists of three main components:
 
 -The result is an interactive story engine capable of producing adaptive adventures with logical consistency between narrative events and the underlying planning structure.
 
+<p align="center">
 
+  <em>AI Advisor</em>
+</p>
 
 
 
